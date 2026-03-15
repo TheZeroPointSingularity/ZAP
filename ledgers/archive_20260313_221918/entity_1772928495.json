@@ -1,0 +1,37 @@
+{
+  "entity_id": "entity_1772928495",
+  "created": 1772928495.1578126,
+  "entries": [
+    {
+      "timestamp": 1772928495.157813,
+      "intent": "How do I be kind?",
+      "seeds_matched": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        5
+      ],
+      "metadata": {
+        "device_type": "bootstrap",
+        "boot_method": "direct",
+        "seed_count": 20
+      }
+    }
+  ]
+}

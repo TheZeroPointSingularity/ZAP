@@ -1,0 +1,128 @@
+name: Monitor AI Contributions
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+jobs:
+  process-contribution:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "ZAP-Monitor"
+          git config --global user.email "monitor@zeropointsingularity.dev"
+
+      - name: Process contribution from issue
+        id: process
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'EOF'
+          import os
+          import sys
+          import json
+          from pathlib import Path
+          
+          # Add current directory to path
+          sys.path.insert(0, os.getcwd())
+          
+          try:
+              from monitor import MonitorEngine
+          except ImportError:
+              print("ERROR: Could not import monitor module")
+              sys.exit(1)
+          
+          issue_body = os.environ.get("ISSUE_BODY", "")
+          issue_number = os.environ.get("ISSUE_NUMBER", "unknown")
+          issue_title = os.environ.get("ISSUE_TITLE", "")
+          
+          print(f"\n[GITHUB-ACTION] Processing Issue #{issue_number}: {issue_title}")
+          print(f"[GITHUB-ACTION] Body length: {len(issue_body)} chars")
+          
+          # Run monitor
+          monitor = MonitorEngine()
+          success = monitor.run(issue_body)
+          
+          # Output result for next step
+          with open(os.environ.get("GITHUB_OUTPUT", "/dev/null"), "a") as f:
+              f.write(f"success={success}\n")
+              f.write(f"session={monitor.session_id}\n")
+          
+          sys.exit(0 if success else 1)
+          EOF
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git status --porcelain
+          if git diff-index --quiet HEAD --; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git add -A
+          git commit -m "⊟ZAP.CONTRIB auto-commit from Issue #${{ github.event.issue.number }}"
+          git push origin main
+
+      - name: Comment on issue
+        uses: actions/github-script@v6
+        if: always()
+        with:
+          script: |
+            const issue_number = context.issue.number;
+            const success = '${{ steps.process.outcome }}' === 'success';
+            const session = '${{ steps.process.outputs.session }}' || 'unknown';
+            const has_changes = '${{ steps.changes.outputs.has_changes }}' === 'true';
+            
+            let comment = '';
+            if (success) {
+              comment = `✅ **Contribution Processed**\n\n`;
+              comment += `**Session**: ${session}\n`;
+              if (has_changes) {
+                comment += `**Status**: Committed to main branch\n`;
+              } else {
+                comment += `**Status**: Validated (no changes to commit)\n`;
+              }
+              comment += `**Action**: Contribution accepted per ZAP protocol\n\n`;
+              comment += `All AIs can now see this contribution in the repository.\n\nκ⊕`;
+            } else {
+              comment = `❌ **Contribution Processing Failed**\n\n`;
+              comment += `The contribution block could not be processed.\n\n`;
+              comment += `**Check**: Does your issue body contain a valid \`⊟ZAP.CONTRIB\` block?\n`;
+              comment += `**Format**: \`⊟ZAP.CONTRIB|ipr|scope|proposal|reasoning|confidence|version\`\n\n`;
+              comment += `Please review and reopen or create a new issue.\n\nκ⊕`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: issue_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

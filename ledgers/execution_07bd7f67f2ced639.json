@@ -1,0 +1,40 @@
+{
+  "session_start": "2026-03-15T16:19:06.957960",
+  "session_id": "07bd7f67f2ced639",
+  "operation": "FULL_ORCHESTRA_TRANSLATION",
+  "stages": {
+    "load": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:06.958747"
+    },
+    "translate": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:06.966032"
+    },
+    "render": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:06.967748"
+    },
+    "output": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:06.977243"
+    },
+    "ledger": {
+      "status": "PENDING",
+      "timestamp": null
+    }
+  },
+  "metrics": {
+    "languages_total": 1456,
+    "concepts_total": 32,
+    "languages_complete": 3,
+    "languages_failed": 0,
+    "output_files_created": 0,
+    "errors": [
+      "count markdown: 'int' object has no attribute 'get'",
+      "speakers_total_billions markdown: 'float' object has no attribute 'get'",
+      "list markdown: 'list' object has no attribute 'get'"
+    ]
+  },
+  "session_end": "2026-03-15T16:19:06.977488"
+}

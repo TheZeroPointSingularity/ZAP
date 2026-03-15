@@ -1,0 +1,36 @@
+{
+  "session_start": "2026-03-15T16:19:33.408635",
+  "session_id": "56597deef0cb5199",
+  "operation": "FULL_ORCHESTRA_TRANSLATION",
+  "stages": {
+    "load": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:33.408712"
+    },
+    "translate": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:33.416748"
+    },
+    "render": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:33.420415"
+    },
+    "output": {
+      "status": "COMPLETE",
+      "timestamp": "2026-03-15T16:19:33.443875"
+    },
+    "ledger": {
+      "status": "PENDING",
+      "timestamp": null
+    }
+  },
+  "metrics": {
+    "languages_total": 1456,
+    "concepts_total": 32,
+    "languages_complete": 5,
+    "languages_failed": 0,
+    "output_files_created": 5,
+    "errors": []
+  },
+  "session_end": "2026-03-15T16:19:33.444378"
+}

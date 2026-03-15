@@ -1,9 +1,0 @@
-{
-  "ipr": "test",
-  "scope": "test.discord.workflow",
-  "proposal": "testing bot detection",
-  "reasoning": "proof of concept validation",
-  "confidence": 0.8,
-  "requires_version": "v20",
-  "raw_block": "\u229fZAP.CONTRIB|test|test.discord.workflow|testing bot detection|proof of concept validation|0.8|v20"
-}
