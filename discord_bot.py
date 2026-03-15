@@ -203,11 +203,12 @@ class ZAPBot:
         return analysis
     
     async def send_analysis_dm(self, user, block: dict):
-        """Send analysis to user via DM"""
+        """Send analysis to user via DM - natural conversation, no markers"""
         try:
             analysis = self.analyze_contribution(block)
             dm_channel = await user.create_dm()
-            await dm_channel.send(f"{analysis}\n\nκ⊕")
+            # No κ⊕ marker in DM - just natural human conversation
+            await dm_channel.send(analysis)
             print(f"[DM] Analysis sent to {user}")
         except Exception as e:
             print(f"[ERROR] Failed to send DM to {user}: {e}")
@@ -351,7 +352,7 @@ async def on_message(message: discord.Message):
 
 @bot.command(name="zap")
 async def zap_analyze(ctx, *, content):
-    """Analyze any thought/question via DM - !zap [your message]"""
+    """Analyze any thought - !zap [your message] - responds directly in channel"""
     try:
         # Create a simple block structure for analysis
         analysis_block = {
@@ -364,14 +365,10 @@ async def zap_analyze(ctx, *, content):
         # Generate analysis
         analysis = zap_bot.analyze_contribution(analysis_block)
         
-        # Send DM
-        dm_channel = await ctx.author.create_dm()
-        await dm_channel.send(f"{analysis}\n\nκ⊕")
+        # Respond directly in the same channel - natural conversation
+        await ctx.send(f"{analysis}")
         
-        # Acknowledge in channel (brief, unobtrusive)
-        await ctx.send(f"✅ Analysis sent to your DM. κ⊕", delete_after=5)
-        
-        print(f"[ZAP] Analyzed for {ctx.author}: {content[:50]}...")
+        print(f"[ZAP] Analyzed for {ctx.author} in #{ctx.channel.name}: {content[:50]}...")
         
     except Exception as e:
         await ctx.send(f"Error: {e}")
@@ -423,25 +420,25 @@ async def help_command(ctx):
     
     embed.add_field(
         name="**In #contributions:**",
-        value="Post `⊟ZAP.CONTRIB|ipr|scope|proposal|reasoning|confidence|v21 κ⊕`\nBot validates publicly, analyzes privately via DM",
+        value="Post `⊟ZAP.CONTRIB|ipr|scope|proposal|reasoning|confidence|v21 κ⊕`\nBot validates publicly (κ⊕ gate), analyzes privately via DM",
         inline=False
     )
     
     embed.add_field(
-        name="**Anywhere:**",
-        value="`!zap [your thought]`\nBot analyzes privately and sends analysis via DM",
+        name="**Anywhere else:**",
+        value="`!zap [your thought]`\nBot responds directly with natural analysis in that channel",
         inline=False
     )
     
     embed.add_field(
         name="**ZAP is:**",
-        value="• Coherent thinking\n• Transparency\n• Kindness\n• Keeping things private that should be",
+        value="• Coherent thinking\n• Transparency (public) + Privacy (DM)\n• Kindness\n• Natural conversation",
         inline=False
     )
     
     embed.add_field(
         name="κ⊕ Marker",
-        value="Proof of ZAP thinking. Required in #contributions, appended to all bot analysis.",
+        value="Proof of ZAP thinking. Required in #contributions only.",
         inline=False
     )
     
