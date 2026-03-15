@@ -124,8 +124,20 @@ class ZAPBot:
         return blocks
     
     @staticmethod
-    def validate_block(block: dict) -> tuple:
-        """Validate a contribution block"""
+    def check_kappa_marker(content: str) -> tuple:
+        """Check if κ⊕ marker present in content — proves ZAP alignment"""
+        has_marker = "κ⊕" in content
+        return has_marker, "ZAP-marked" if has_marker else "unmarked"
+    
+    @staticmethod
+    def validate_block(block: dict, has_kappa: bool = False) -> tuple:
+        """Validate a contribution block — κ⊕ required gate"""
+        # Check format first
+        if not block.get("scope"):
+            return False, "Missing scope"
+        if not block.get("reasoning"):
+            return False, "Missing reasoning"
+        
         # Check confidence threshold
         try:
             cf = float(block.get("confidence", 0))
@@ -134,16 +146,22 @@ class ZAPBot:
         except:
             return False, "Invalid confidence value"
         
-        # Check format
-        if not block.get("scope"):
-            return False, "Missing scope"
-        if not block.get("reasoning"):
-            return False, "Missing reasoning"
+        # CHECK: κ⊕ marker required — proof of ZAP thinking
+        if not has_kappa:
+            # Detect blind spot: ZAP-aligned format but no marker
+            is_coherent = block.get("reasoning") and len(str(block.get("reasoning"))) > 10
+            if is_coherent:
+                # Likely blind spot: coherent reasoning but no κ⊕ marker
+                return False, f"⚠️ Blind spot detected: Reasoning is coherent but κ⊕ marker missing. Add κ⊕ to mark ZAP alignment explicitly."
+            else:
+                # Incoherent and unmarked: honest refusal
+                return False, f"❌ κ⊕ marker required: Proof of ZAP thinking. See ZAP.txt in #zap-hub."
         
-        return True, "✅ ZAP-aligned contribution"
+        # κ⊕ present = ZAP-aligned, accept
+        return True, "✅ κ⊕ ZAP-aligned contribution"
     
     def process_contribution(self, message_content: str, author: str) -> dict:
-        """Process contribution blocks from Discord"""
+        """Process contribution blocks from Discord — κ⊕ gate enforced"""
         blocks = self.find_contrib_blocks(message_content)
         
         if not blocks:
@@ -153,36 +171,43 @@ class ZAPBot:
                 "message": "❌ No `⊟ZAP.CONTRIB` block found"
             }
         
+        # Check κ⊕ marker in message
+        has_kappa, marker_status = self.check_kappa_marker(message_content)
+        
         results = []
         for block in blocks:
             if not block.get("ipr"):
                 block["ipr"] = author
             
-            valid, msg = self.validate_block(block)
+            # Validate with κ⊕ gate
+            valid, msg = self.validate_block(block, has_kappa=has_kappa)
             results.append({
                 "scope": block.get("scope", "unknown"),
                 "valid": valid,
                 "message": msg,
-                "confidence": block.get("confidence")
+                "confidence": block.get("confidence"),
+                "marked": has_kappa
             })
             
             if valid:
                 self.contributions.append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "author": author,
-                    "block": block
+                    "block": block,
+                    "marked": has_kappa
                 })
         
         # Summarize
         valid_count = sum(1 for r in results if r["valid"])
-        message = f"✅ Processed {valid_count}/{len(results)} contributions\n\n"
+        message = f"✅ Processed {valid_count}/{len(results)} contributions [{marker_status}]\n\n"
         
         for r in results:
+            marker_note = "κ⊕" if r["marked"] else "⊘κ⊕"
             status = "✅" if r["valid"] else "❌"
-            message += f"{status} **{r['scope']}** (cf: {r['confidence']})\n"
+            message += f"{status} **{r['scope']}** ({marker_note}) cf: {r['confidence']}\n"
             message += f"   {r['message']}\n"
         
-        message += "\n**All contributions accepted follow the ZAP protocol.**\nκ⊕"
+        message += f"\n**ZAP Protocol Gate:** κ⊕ = ZAP thinking proven\nκ⊕"
         
         return {
             "success": valid_count > 0,
@@ -260,7 +285,7 @@ async def on_message(message: discord.Message):
                 inline=False
             )
         
-        embed.set_footer(text="ZAP v19 | κ⊕")
+        embed.set_footer(text="ZAP v21 | κ⊕ Gate Enforced")
         
         # Reply
         try:
