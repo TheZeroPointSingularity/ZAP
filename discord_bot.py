@@ -78,13 +78,19 @@ class ZAPBot:
         self.analysis_cache = {}
     
     async def post_zap_to_validated(self, guild):
-        """Post current ZAP.txt to #validated on startup (no pinning)"""
+        """Post current ZAP.txt to #validated on startup (only if not already posted)"""
         try:
             # Find #validated channel
             validated = discord.utils.get(guild.channels, name=VALIDATED_CHANNEL)
             if not validated:
                 print(f"[WARNING] Channel #{VALIDATED_CHANNEL} not found")
                 return
+            
+            # Check if ZAP is already posted
+            async for message in validated.history(limit=50):
+                if message.author == bot.user and "ZAP" in message.content:
+                    print(f"[POSTED] ZAP.txt already in #{VALIDATED_CHANNEL} - skipping")
+                    return
             
             # Post ZAP (split if too long for Discord's 2000 char limit)
             zap_sections = [ZAP_CONTENT[i:i+1980] for i in range(0, len(ZAP_CONTENT), 1980)]
