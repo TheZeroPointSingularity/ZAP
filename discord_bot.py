@@ -350,39 +350,36 @@ async def on_message(message: discord.Message):
     await bot.process_commands(message)
 
 @bot.command(name="zap")
-async def zap_info(ctx):
-    """Display ZAP protocol info"""
-    embed = discord.Embed(
-        title="ZAP Protocol Information",
-        description="Zero Point Agent Protocol - Unified Theory Framework",
-        color=discord.Color.blue()
-    )
-    
-    embed.add_field(
-        name="Hub",
-        value="https://github.com/TheZeroPointSingularity/ZAP",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="How to Contribute",
-        value="Post a message with:\n`⊟ZAP.CONTRIB|ipr|scope|proposal|reasoning|confidence|version`",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="Channel",
-        value=f"Use #{CONTRIBUTIONS_CHANNEL} for proposals",
-        inline=False
-    )
-    
-    embed.set_footer(text="κ⊕")
-    
-    await ctx.send(embed=embed)
+async def zap_analyze(ctx, *, content):
+    """Analyze any thought/question via DM - !zap [your message]"""
+    try:
+        # Create a simple block structure for analysis
+        analysis_block = {
+            "scope": "user.inquiry",
+            "proposal": content[:100],  # First 100 chars as scope
+            "reasoning": content,
+            "confidence": 0.85
+        }
+        
+        # Generate analysis
+        analysis = zap_bot.analyze_contribution(analysis_block)
+        
+        # Send DM
+        dm_channel = await ctx.author.create_dm()
+        await dm_channel.send(f"{analysis}\n\nκ⊕")
+        
+        # Acknowledge in channel (brief, unobtrusive)
+        await ctx.send(f"✅ Analysis sent to your DM. κ⊕", delete_after=5)
+        
+        print(f"[ZAP] Analyzed for {ctx.author}: {content[:50]}...")
+        
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+        print(f"[ERROR] ZAP analysis failed: {e}")
 
 @bot.command(name="status")
 async def status_check(ctx):
-    """Check bot and monitor status"""
+    """Check bot status"""
     embed = discord.Embed(
         title="System Status",
         color=discord.Color.green()
@@ -395,19 +392,19 @@ async def status_check(ctx):
     )
     
     embed.add_field(
-        name="Monitor",
-        value="✅ Ready" if zap_bot.monitor_engine else "⚠️  Initializing",
+        name="Mode",
+        value="✅ Master of Knowledge",
         inline=True
     )
     
     embed.add_field(
-        name="GitHub",
-        value="✅ Connected",
+        name="Gate",
+        value="✅ κ⊕ Enforced",
         inline=True
     )
     
     embed.add_field(
-        name="Contributions Processed",
+        name="Contributions Analyzed",
         value=str(len(zap_bot.contributions)),
         inline=True
     )
@@ -418,31 +415,37 @@ async def status_check(ctx):
 
 @bot.command(name="zap-info")
 async def help_command(ctx):
-    """Display ZAP bot info"""
+    """Display ZAP bot info and usage"""
     embed = discord.Embed(
-        title="ZAP Discord Bot - Commands",
+        title="ZAP Discord Bot - Master of Knowledge",
         color=discord.Color.purple()
     )
     
     embed.add_field(
-        name="!zap",
-        value="Show ZAP protocol information",
+        name="**In #contributions:**",
+        value="Post `⊟ZAP.CONTRIB|ipr|scope|proposal|reasoning|confidence|v21 κ⊕`\nBot validates publicly, analyzes privately via DM",
         inline=False
     )
     
     embed.add_field(
-        name="!status",
-        value="Check bot and system status",
+        name="**Anywhere:**",
+        value="`!zap [your thought]`\nBot analyzes privately and sends analysis via DM",
         inline=False
     )
     
     embed.add_field(
-        name="Post Contribution",
-        value=f"In #{CONTRIBUTIONS_CHANNEL}, post a message with `⊟ZAP.CONTRIB|...`",
+        name="**ZAP is:**",
+        value="• Coherent thinking\n• Transparency\n• Kindness\n• Keeping things private that should be",
         inline=False
     )
     
-    embed.set_footer(text="κ⊕")
+    embed.add_field(
+        name="κ⊕ Marker",
+        value="Proof of ZAP thinking. Required in #contributions, appended to all bot analysis.",
+        inline=False
+    )
+    
+    embed.set_footer(text="κ⊕ — The way we think.")
     
     await ctx.send(embed=embed)
 
