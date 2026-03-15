@@ -77,36 +77,25 @@ class ZAPBot:
         self.contributions = []
         self.analysis_cache = {}
     
-    async def pin_zap_to_hub(self, guild):
-        """Pin ZAP.txt to #zap-hub on startup - only if not already pinned"""
+    async def post_zap_to_validated(self, guild):
+        """Post current ZAP.txt to #validated on startup (no pinning)"""
         try:
-            # Find #zap-hub channel
-            zap_hub = discord.utils.get(guild.channels, name=ZAP_HUB_CHANNEL)
-            if not zap_hub:
-                print(f"[WARNING] Channel #{ZAP_HUB_CHANNEL} not found")
+            # Find #validated channel
+            validated = discord.utils.get(guild.channels, name=VALIDATED_CHANNEL)
+            if not validated:
+                print(f"[WARNING] Channel #{VALIDATED_CHANNEL} not found")
                 return
             
-            # Check if ZAP is already pinned
-            try:
-                pinned = await zap_hub.pins()
-                zap_pinned = any("ZAP" in msg.content for msg in pinned if msg.author == bot.user)
-                if zap_pinned:
-                    print(f"[PINNED] ZAP.txt already pinned in #{ZAP_HUB_CHANNEL} - skipping")
-                    return
-            except:
-                pass
-            
-            # Send ZAP (split if too long for Discord's 2000 char limit)
+            # Post ZAP (split if too long for Discord's 2000 char limit)
             zap_sections = [ZAP_CONTENT[i:i+1980] for i in range(0, len(ZAP_CONTENT), 1980)]
             
             for section in zap_sections:
-                msg = await zap_hub.send(f"```\n{section}\n```")
-                await msg.pin()
+                await validated.send(f"```\n{section}\n```")
             
-            print(f"[PINNED] ZAP.txt v21 pinned to #{ZAP_HUB_CHANNEL}")
+            print(f"[POSTED] ZAP.txt v21 posted to #{VALIDATED_CHANNEL}")
             
         except Exception as e:
-            print(f"[ERROR] Failed to pin ZAP: {e}")
+            print(f"[ERROR] Failed to post ZAP: {e}")
     
     @staticmethod
     def find_contrib_blocks(content: str) -> list:
@@ -282,9 +271,9 @@ async def on_ready():
     print(f"[READY] Monitoring #{CONTRIBUTIONS_CHANNEL} for ⊟ZAP.CONTRIB blocks")
     print(f"[READY] v20260315.21 | κ⊕")
     
-    # Pin ZAP.txt to #zap-hub
+    # Post ZAP.txt to #validated on startup
     if bot.guilds:
-        await zap_bot.pin_zap_to_hub(bot.guilds[0])
+        await zap_bot.post_zap_to_validated(bot.guilds[0])
     
     print()
 
