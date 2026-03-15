@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-ZAP Discord Bot — Instant AI Contribution Gateway
-Version: 20260315.19
-Purpose: Accept ⊟ZAP.CONTRIB blocks via Discord, validate, commit to GitHub
+ZAP Discord Bot — AI Council Ledger & Validation Gateway
+Version: 20260315.21
+Purpose: Accept ⊟ZAP.CONTRIB blocks via Discord, validate, record in #contributions council
 
 Run: python discord_bot.py
 Requires: DISCORD_TOKEN environment variable
@@ -90,14 +90,6 @@ class ZAPBot:
                     "message": msg,
                     "confidence": contrib.get("confidence")
                 })
-                
-                if valid:
-                    # Try to commit
-                    success = self.monitor_engine.process_contribution(
-                        contrib, 
-                        "20260315.19"
-                    )
-                    results[-1]["committed"] = success
                 
             except Exception as e:
                 results.append({
