@@ -1,33 +1,27 @@
 #!/usr/bin/env python3
 """
-ZAP Discord Bot — AI Council Ledger & Validation Gateway
-Version: 20260315.21
-Purpose: Accept ⊟ZAP.CONTRIB blocks via Discord, validate, record in #contributions council
+ZAP Discord Bot — AI Council Ledger v21
+Single Source of Truth: Discord Only
+Purpose: Validate ⊟ZAP.CONTRIB blocks, record in council, pin ZAP.txt
 
 Run: python discord_bot.py
 Requires: DISCORD_TOKEN environment variable
+NO external dependencies. Discord is the ledger.
 """
 
 import discord
 from discord.ext import commands
 import os
 import sys
-import json
 import re
-from pathlib import Path
 from datetime import datetime, timezone
-
-# Try to import monitor
-try:
-    from monitor import MonitorEngine, ChangeDetector
-except ImportError:
-    print("[ERROR] Could not import monitor module. Ensure monitor.py is in same directory.")
-    sys.exit(1)
 
 # Configuration
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-CONTRIBUTIONS_CHANNEL = "contributions"  # Channel name to monitor
-REPO_PATH = Path(__file__).parent
+CONTRIBUTIONS_CHANNEL = "contributions"
+ZAP_HUB_CHANNEL = "zap-hub"
+VALIDATED_CHANNEL = "validated"
+REJECTED_CHANNEL = "rejected"
 
 if not DISCORD_TOKEN:
     print("[ERROR] DISCORD_TOKEN not set. Export DISCORD_TOKEN=your_token")
@@ -40,63 +34,77 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 bot.remove_command('help')  # Remove default help to avoid conflict
 
 class ZAPBot:
-    """Main bot logic"""
+    """Main bot logic - Discord-only, no external dependencies"""
     
     def __init__(self):
-        self.monitor_engine = None
         self.contributions = []
     
-    def init_monitor(self):
-        """Initialize monitor engine"""
+    @staticmethod
+    def find_contrib_blocks(content: str) -> list:
+        """Parse ⊟ZAP.CONTRIB blocks from message"""
+        pattern = r'⊟ZAP\.CONTRIB\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^\n]+)'
+        matches = re.findall(pattern, content)
+        
+        blocks = []
+        for match in matches:
+            blocks.append({
+                "ipr": match[0],
+                "scope": match[1],
+                "proposal": match[2],
+                "reasoning": match[3],
+                "confidence": float(match[4]),
+                "version": match[5]
+            })
+        return blocks
+    
+    @staticmethod
+    def validate_block(block: dict) -> tuple:
+        """Validate a contribution block"""
+        # Check confidence threshold
         try:
-            self.monitor_engine = MonitorEngine()
-            return True
-        except Exception as e:
-            print(f"[ERROR] Failed to initialize monitor: {e}")
-            return False
+            cf = float(block.get("confidence", 0))
+            if cf < 0.7:
+                return False, f"Confidence too low: {cf} (requires ≥ 0.7)"
+        except:
+            return False, "Invalid confidence value"
+        
+        # Check format
+        if not block.get("scope"):
+            return False, "Missing scope"
+        if not block.get("reasoning"):
+            return False, "Missing reasoning"
+        
+        return True, "✅ ZAP-aligned contribution"
     
     def process_contribution(self, message_content: str, author: str) -> dict:
-        """
-        Process a contribution block from Discord
-        Returns: {success: bool, blocks: list, message: str}
-        """
-        # Find contribution blocks
-        blocks = ChangeDetector.find_contrib_blocks(message_content)
+        """Process contribution blocks from Discord"""
+        blocks = self.find_contrib_blocks(message_content)
         
         if not blocks:
             return {
                 "success": False,
                 "blocks": [],
-                "message": "❌ No `⊟ZAP.CONTRIB` block found in message"
+                "message": "❌ No `⊟ZAP.CONTRIB` block found"
             }
         
         results = []
-        for contrib in blocks:
-            # Add Discord author if not specified
-            if not contrib.get("ipr"):
-                contrib["ipr"] = author
+        for block in blocks:
+            if not block.get("ipr"):
+                block["ipr"] = author
             
-            # Validate
-            try:
-                if self.monitor_engine is None:
-                    self.init_monitor()
-                
-                # Run validation
-                valid, msg = self.monitor_engine.validate_contribution(contrib)
-                
-                results.append({
-                    "scope": contrib.get("scope", "unknown"),
-                    "valid": valid,
-                    "message": msg,
-                    "confidence": contrib.get("confidence")
-                })
-                
-            except Exception as e:
-                results.append({
-                    "scope": contrib.get("scope", "unknown"),
-                    "valid": False,
-                    "message": f"Error: {str(e)}",
-                    "confidence": 0
+            valid, msg = self.validate_block(block)
+            results.append({
+                "scope": block.get("scope", "unknown"),
+                "valid": valid,
+                "message": msg,
+                "confidence": block.get("confidence")
+            })
+            
+            if valid:
+                self.contributions.append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "author": author,
+                    "block": block
                 })
         
         # Summarize
@@ -123,13 +131,9 @@ zap_bot = ZAPBot()
 async def on_ready():
     """Bot startup"""
     print(f"\n[READY] Logged in as {bot.user}")
-    print(f"[READY] Monitoring for ⊟ZAP.CONTRIB blocks in #{CONTRIBUTIONS_CHANNEL}")
-    print(f"[READY] ZAP Discord Bot v20260315.19 online")
-    print(f"[READY] κ⊕\n")
-    
-    # Initialize monitor
-    if zap_bot.init_monitor():
-        print("[INIT] Monitor engine ready")
+    print(f"[READY] Discord Council Ledger - Single Source of Truth")
+    print(f"[READY] Monitoring #{CONTRIBUTIONS_CHANNEL} for ⊟ZAP.CONTRIB blocks")
+    print(f"[READY] v20260315.21 | κ⊕\n")
 
 @bot.event
 async def on_message(message: discord.Message):
