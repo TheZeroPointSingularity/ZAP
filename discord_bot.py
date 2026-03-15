@@ -71,10 +71,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 bot.remove_command('help')  # Remove default help to avoid conflict
 
 class ZAPBot:
-    """Main bot logic - Discord-only, no external dependencies"""
+    """Main bot logic - Universal LLM Peer Council Member"""
     
     def __init__(self):
         self.contributions = []
+        self.analysis_cache = {}
     
     async def pin_zap_to_hub(self, guild):
         """Pin ZAP.txt to #zap-hub on startup"""
@@ -160,6 +161,57 @@ class ZAPBot:
         # κ⊕ present = ZAP-aligned, accept
         return True, "✅ κ⊕ ZAP-aligned contribution"
     
+    def analyze_contribution(self, block: dict) -> str:
+        """Analyze a contribution block and generate natural response"""
+        scope = block.get("scope", "unknown")
+        proposal = block.get("proposal", "")
+        reasoning = block.get("reasoning", "")
+        confidence = block.get("confidence", 0.8)
+        
+        # Parse what the contribution is about
+        scope_analysis = f"I see you're working on **{scope}**. "
+        
+        # Comment on reasoning
+        reasoning_quality = min(len(reasoning) // 10, 10)  # Simple heuristic
+        if reasoning_quality > 7:
+            reasoning_comment = "Your reasoning is thorough and well-structured. "
+        elif reasoning_quality > 4:
+            reasoning_comment = "Your reasoning covers the key points. "
+        else:
+            reasoning_comment = "You've outlined a direction. "
+        
+        # Assess coherence
+        proposal_words = len(proposal.split())
+        scope_words = len(scope.split())
+        
+        if proposal_words > scope_words * 2:
+            coherence = "The proposal develops from the scope naturally."
+        else:
+            coherence = "The scope and proposal align."
+        
+        # Suggest synthesis
+        if confidence > 0.85:
+            synthesis = "At this confidence level, you're ready to build on this. Consider what comes next."
+        elif confidence > 0.7:
+            synthesis = "This is a solid foundation. Strengthen any uncertain areas if needed."
+        else:
+            synthesis = "This is exploratory territory. Keep thinking through the details."
+        
+        # Assemble natural response
+        analysis = f"{scope_analysis}{reasoning_comment}{coherence} {synthesis}\n\nWhat's your next thinking here?"
+        
+        return analysis
+    
+    async def send_analysis_dm(self, user, block: dict):
+        """Send analysis to user via DM"""
+        try:
+            analysis = self.analyze_contribution(block)
+            dm_channel = await user.create_dm()
+            await dm_channel.send(f"{analysis}\n\nκ⊕")
+            print(f"[DM] Analysis sent to {user}")
+        except Exception as e:
+            print(f"[ERROR] Failed to send DM to {user}: {e}")
+    
     def process_contribution(self, message_content: str, author: str) -> dict:
         """Process contribution blocks from Discord — κ⊕ gate enforced"""
         blocks = self.find_contrib_blocks(message_content)
@@ -186,7 +238,8 @@ class ZAPBot:
                 "valid": valid,
                 "message": msg,
                 "confidence": block.get("confidence"),
-                "marked": has_kappa
+                "marked": has_kappa,
+                "block": block
             })
             
             if valid:
@@ -259,10 +312,10 @@ async def on_message(message: discord.Message):
             str(message.author)
         )
         
-        # Prepare Discord embed response
+        # PUBLIC: Send validation status to channel (gate check only)
         color = discord.Color.green() if result["success"] else discord.Color.red()
         embed = discord.Embed(
-            title="ZAP Contribution Processed",
+            title="⊟ZAP.CONTRIB Validated",
             description=result["message"],
             color=color,
             timestamp=datetime.now(timezone.utc)
@@ -273,27 +326,25 @@ async def on_message(message: discord.Message):
             icon_url=message.author.avatar.url if message.author.avatar else ""
         )
         
-        # Add field with details
-        blocks_text = "\n".join([
-            f"• {b['scope']}: {b['message']}"
-            for b in result["blocks"]
-        ])
-        if blocks_text:
-            embed.add_field(
-                name="Details",
-                value=blocks_text[:1024],  # Discord field limit
-                inline=False
-            )
-        
         embed.set_footer(text="ZAP v21 | κ⊕ Gate Enforced")
         
-        # Reply
         try:
             await message.reply(embed=embed)
-            print(f"[SUCCESS] Reply sent to {message.author}")
+            print(f"[VALIDATED] Contribution from {message.author}")
         except Exception as e:
-            print(f"[ERROR] Failed to reply: {e}")
-            await message.reply(f"Error sending reply: {e}")
+            print(f"[ERROR] Failed to post validation: {e}")
+        
+        # PRIVATE: Send natural analysis via DM to each valid contribution author
+        if result["success"]:
+            for block_result in result["blocks"]:
+                if block_result["valid"]:
+                    try:
+                        await zap_bot.send_analysis_dm(
+                            message.author,
+                            block_result["block"]
+                        )
+                    except Exception as e:
+                        print(f"[ERROR] Failed to send DM: {e}")
     
     # Continue processing commands
     await bot.process_commands(message)
@@ -400,7 +451,9 @@ def main():
     try:
         bot.run(DISCORD_TOKEN)
     except Exception as e:
+        import traceback
         print(f"[ERROR] Failed to start bot: {e}")
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
