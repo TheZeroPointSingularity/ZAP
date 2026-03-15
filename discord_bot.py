@@ -78,7 +78,7 @@ class ZAPBot:
         self.analysis_cache = {}
     
     async def pin_zap_to_hub(self, guild):
-        """Pin ZAP.txt to #zap-hub on startup"""
+        """Pin ZAP.txt to #zap-hub on startup - only if not already pinned"""
         try:
             # Find #zap-hub channel
             zap_hub = discord.utils.get(guild.channels, name=ZAP_HUB_CHANNEL)
@@ -86,13 +86,15 @@ class ZAPBot:
                 print(f"[WARNING] Channel #{ZAP_HUB_CHANNEL} not found")
                 return
             
-            # Delete old pins (keep it fresh)
-            async for message in zap_hub.history(limit=100):
-                if message.author == bot.user and "ZAP" in message.content:
-                    try:
-                        await message.unpin()
-                    except:
-                        pass
+            # Check if ZAP is already pinned
+            try:
+                pinned = await zap_hub.pins()
+                zap_pinned = any("ZAP" in msg.content for msg in pinned if msg.author == bot.user)
+                if zap_pinned:
+                    print(f"[PINNED] ZAP.txt already pinned in #{ZAP_HUB_CHANNEL} - skipping")
+                    return
+            except:
+                pass
             
             # Send ZAP (split if too long for Discord's 2000 char limit)
             zap_sections = [ZAP_CONTENT[i:i+1980] for i in range(0, len(ZAP_CONTENT), 1980)]
